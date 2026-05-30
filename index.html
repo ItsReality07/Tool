@@ -307,4 +307,802 @@
         });
     </script> 
 </body> -->
+<!-- </html> -->
+
+
+<!-- This is interactive website for learning periodic table. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Periodic Table Quiz</title>
+
+<!-- Canvas Confetti -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+<style>
+  :root{
+    --bg1:#a8edea; --bg2:#fed6e3;
+    --card:#ffffffcc;
+    --glass:rgba(255,255,255,0.06);
+    --glass-2:rgba(255,255,255,0.02);
+    --muted:#7b7b7b;
+    --accent:#7b61ff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;}
+  body{
+    background: linear-gradient(135deg,var(--bg1) 0%, var(--bg2) 100%);
+    display:flex; align-items:center; justify-content:center; padding:16px;
+  }
+
+  .app {
+    width:100%;
+    max-width:980px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.92));
+    border-radius:18px;
+    box-shadow: 0 14px 48px rgba(15,15,25,0.16);
+    padding:18px;
+    overflow:hidden;
+  }
+
+  header{
+    display:flex; gap:12px; align-items:center; justify-content:space-between;
+    margin-bottom:8px;
+  }
+  h1{font-size:20px; margin:0; color:#222; letter-spacing:0.6px}
+  .subtitle{color:var(--muted); font-size:13px}
+
+  /* Level selection grid */
+  .levels {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:12px;
+    margin:8px 0 14px;
+  }
+
+  .level-btn {
+    border-radius:14px;
+    padding:14px;
+    text-align:center;
+    background:transparent;
+    border:2px solid rgba(0,0,0,0.06);
+    cursor:pointer;
+    font-weight:800;
+    transition:transform .18s ease, box-shadow .18s ease;
+    position:relative;
+    overflow:hidden;
+    min-height:78px;
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .level-btn .title{font-size:15px}
+  .level-btn .desc{font-size:12px; color:#333; opacity:0.85}
+  .level-btn:focus{outline:none}
+  .level-btn:hover{transform:translateY(-6px) scale(1.01); box-shadow:0 10px 30px rgba(0,0,0,0.08)}
+  .level-btn:active{ transform: translateY(-2px) scale(.995) }
+
+  .level-btn::after{
+    content:""; position:absolute; inset:0; border-radius:14px;
+    padding:2px; pointer-events:none;
+    background: linear-gradient(90deg, rgba(255,255,255,0.0), rgba(255,255,255,0.02));
+    box-shadow: inset 0 0 0 2px transparent;
+    transition: box-shadow .22s ease;
+  }
+
+  /* colors for each level */
+  .easy { background: linear-gradient(135deg,#b8f3d4,#81e6a7); border:2px solid rgba(0,0,0,0.05); color:#024; }
+  .medium { background: linear-gradient(135deg,#bfe0ff,#74c0fc); color:#04234a; }
+  .hard { background: linear-gradient(135deg,#ffd9d9,#ff9b9b); color:#4b1212; }
+  .fblock { background: linear-gradient(135deg,#e9d7ff,#caa6ff); color:#3a0d4a; }
+  .mix { background: linear-gradient(135deg,#fff6b8,#ffd773); color:#443800; }
+  .basic { background: linear-gradient(135deg,#d7f2ff,#b6f0d7); color:#023; }
+  .burst { background: linear-gradient(135deg,#ffc8a2,#ff7b5b); color:#3a1200; }
+
+  /* main game area */
+  .game {
+    display:grid; grid-template-columns:1fr 340px; gap:16px; align-items:start;
+  }
+  @media (max-width:920px){ .game{ grid-template-columns:1fr; } .levels{ grid-template-columns: repeat(2,1fr);} }
+
+  /* left column - quiz card */
+  .card {
+    background:var(--card);
+    border-radius:12px;
+    padding:16px;
+    box-shadow: 0 10px 28px rgba(50,50,80,0.06);
+  }
+  .element-box {
+    width:140px; height:140px; border-radius:14px; margin:12px auto;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    border:3px solid rgba(0,0,0,0.06);
+    background:linear-gradient(180deg,#fff,#fefefe);
+    cursor:pointer;
+    position:relative;
+  }
+  .atomic { font-weight:800; font-size:38px; color:#222; }
+  .atomic-no { position:absolute; left:12px; top:12px; font-weight:700; color: #666; font-size:13px }
+
+  .controls { display:flex; gap:10px; justify-content:center; margin:12px 0 8px; flex-wrap:wrap; }
+  .btn {
+    padding:10px 14px; border-radius:12px; border:2px solid rgba(0,0,0,0.06); background:transparent;
+    cursor:pointer; font-weight:800; font-size:14px;
+    transition:transform .12s ease, box-shadow .12s ease; box-shadow:0 6px 18px rgba(20,20,30,0.05);
+  }
+  .btn:active{ transform:scale(.98) }
+  .btn-outline { background:transparent; color:#333; }
+  .btn-primary { background:linear-gradient(90deg,var(--accent),#4db6ff); color:white; border:none; }
+
+  .btn-anim { position:relative; overflow:hidden; }
+  .btn-anim:after{
+    content:''; position:absolute; inset:0; border-radius:12px; transform:scaleX(0); transform-origin:left; background:rgba(255,255,255,0.08);
+    transition:transform .28s ease;
+  }
+  .btn-anim:active:after{ transform:scaleX(1); }
+
+  input[type="text"]{
+    width:100%; padding:12px; border-radius:10px; border:2px solid rgba(0,0,0,0.06);
+    font-size:16px; margin-top:10px;
+  }
+
+  .meta { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:12px; font-size:14px; color:#444; }
+  .tag { padding:6px 10px; border-radius:999px; font-weight:700; font-size:13px; color:white; display:inline-block; }
+
+  .tag.easy { background:linear-gradient(90deg,#2bb673,#1aa25b) }
+  .tag.medium{ background:linear-gradient(90deg,#2d9cdb,#1c6bb0) }
+  .tag.hard{ background:linear-gradient(90deg,#ff6b6b,#d64545) }
+  .tag.fblock{ background:linear-gradient(90deg,#a66aff,#7a3cff) }
+
+  /* progress indicator for BASIC -> ADV */
+  .progress-container{
+    margin:12px 0; padding:10px; border-radius:10px; background: rgba(0,0,0,0.02);
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .progress-steps{ display:flex; justify-content:space-between; gap:8px; }
+  .progress-step{
+    flex:1; text-align:center; padding:8px; border-radius:10px; font-weight:700; font-size:13px; color: #888;
+    background:transparent; border:2px solid transparent; transition:all .28s ease;
+    position:relative;
+  }
+  .progress-step.active{ color:#fff; background:linear-gradient(90deg,var(--accent),#5aa7ff); box-shadow:0 6px 18px rgba(0,0,0,0.08); border-color:rgba(0,0,0,0.06); }
+  .progress-bar{
+    height:8px; background:rgba(0,0,0,0.06); border-radius:10px; overflow:hidden;
+  }
+  .progress-fill{ height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#5aa7ff); transition:width .6s cubic-bezier(.2,.9,.2,1); }
+
+  /* right column - stats & history */
+  .side {
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .panel {
+    background:var(--glass);
+    border-radius:12px; padding:12px;
+    backdrop-filter: blur(6px);
+  }
+  .history { max-height:260px; overflow:auto; font-size:14px; color:#222; background:rgba(255,255,255,0.85); padding:8px; border-radius:8px;}
+  .small { font-size:13px; color:#444 }
+  .confetti-canvas { position:fixed; left:0; top:0; pointer-events:none; z-index:9999; }
+
+  footer{ margin-top:12px; font-size:13px; color:#444; text-align:center}
+
+  /* small responsive tweaks */
+  @media (max-width:600px){
+    .element-box{ width:120px; height:120px; }
+    .atomic{ font-size:32px }
+  }
+</style>
+</head>
+<body>
+  <div class="app" role="application" aria-labelledby="appTitle">
+    <header>
+      <div>
+        <h1 id="appTitle">Periodic Table Quiz</h1>
+        <div class="subtitle">Choose a level and start — no repeats, auto-progress, modern UI.</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">By Divyansh</div>
+      </div>
+    </header>
+
+    <!-- LEVEL SELECT -->
+    <section class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <strong>Select Mode</strong>
+        <small class="small">Tap to start</small>
+      </div>
+
+      <div class="levels" id="levelsGrid">
+        <button class="level-btn easy" data-mode="easy">
+          <div class="title">Easy</div>
+          <div class="desc">Elements 1–20</div>
+        </button>
+        <button class="level-btn medium" data-mode="medium">
+          <div class="title">Medium</div>
+          <div class="desc">Elements 21–60</div>
+        </button>
+        <button class="level-btn hard" data-mode="hard">
+          <div class="title">Hard</div>
+          <div class="desc">Elements 61–118</div>
+        </button>
+        <button class="level-btn fblock" data-mode="fblock">
+          <div class="title">F-Block</div>
+          <div class="desc">Lanthanides & Actinides</div>
+        </button>
+        <button class="level-btn mix" data-mode="mix">
+          <div class="title">Level Mix</div>
+          <div class="desc">Random from all (tag shown)</div>
+        </button>
+        <button class="level-btn basic" data-mode="basic">
+          <div class="title">BASIC → ADV</div>
+          <div class="desc">Easy → Medium → Hard (auto)</div>
+        </button>
+        <button class="level-btn burst" data-mode="burst">
+          <div class="title">Burst</div>
+          <div class="desc">30s rapid-fire</div>
+        </button>
+      </div>
+    </section>
+
+    <!-- GAME AREA -->
+    <main class="game">
+      <div class="card" id="gameCard" aria-live="polite">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div id="levelLabel" class="small">Mode: —</div>
+            <div style="font-size:18px; font-weight:800" id="questionTitle">Atomic Number</div>
+          </div>
+          <div class="atomic-no small" id="atomicNo">—</div>
+        </div>
+
+        <!-- progress indicator (only visible for BASIC mode) -->
+        <div id="progressWrap" class="progress-container" style="display:none;">
+          <div class="progress-steps">
+            <div id="easyStep" class="progress-step">Easy (1–20)</div>
+            <div id="mediumStep" class="progress-step">Medium (21–60)</div>
+            <div id="hardStep" class="progress-step">Hard (61–118)</div>
+          </div>
+          <div class="progress-bar" aria-hidden="true"><div id="progressFill" class="progress-fill"></div></div>
+        </div>
+
+        <div class="element-box" id="elementBox" title="Tap for fun">
+          <div class="atomic" id="symbolBox">—</div>
+        </div>
+
+        <div style="text-align:center;">
+          <div class="tag" id="levelTag" style="display:inline-block; visibility:hidden">TAG</div>
+        </div>
+
+        <input type="text" id="guessInput" placeholder="Type element name and press Enter" autocomplete="off" aria-label="Element name">
+
+        <div class="controls">
+          <button class="btn btn-primary btn-anim" id="submitBtn">Submit</button>
+          <button class="btn btn-outline btn-anim" id="hintBtn">Hint</button>
+        </div>
+
+        <div class="meta">
+          <div class="small">Score: <strong id="scoreDisplay">0/0</strong></div>
+          <div class="small">Hints: <span id="hintsUsed">0</span></div>
+        </div>
+
+        <div id="feedback" class="small" style="min-height:28px; margin-top:8px; color:#3a3a3a"></div>
+      </div>
+
+      <aside class="side">
+        <div class="panel">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>Stats</strong>
+            <small class="small" id="timerDisplay" aria-live="polite"></small>
+          </div>
+          <div style="margin-top:10px;">
+            <div class="small">Correct: <span id="correctCount">0</span></div>
+            <div class="small">Attempted: <span id="attemptedCount">0</span></div>
+            <div class="small">Max Correct (session): <span id="maxCorrect">0</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong>History</strong>
+            <button class="btn btn-outline" id="clearHistory">Clear</button>
+          </div>
+          <div class="history" id="historyBox" aria-live="polite">No attempts yet.</div>
+        </div>
+
+        <div class="panel">
+          <strong>Controls</strong>
+          <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-outline" id="restartBtn">Restart</button>
+            <button class="btn btn-outline" id="returnSelect">Change Mode</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      Tip: Use the Level Mix for a mixed challenge. BASIC→ADV will auto-progress.
+    </footer>
+  </div>
+
+  <!-- Sounds -->
+  <audio id="sndClick" src="https://assets.mixkit.co/sfx/preview/mixkit-positive-interface-beep-221.mp3" preload="auto"></audio>
+  <audio id="sndCorrect" src="https://assets.mixkit.co/sfx/preview/mixkit-quick-jump-arcade-game-239.mp3" preload="auto"></audio>
+  <audio id="sndWrong" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" preload="auto"></audio>
+  <audio id="sndConfetti" src="https://assets.mixkit.co/sfx/preview/mixkit-happy-bell-tone-2874.mp3" preload="auto"></audio>
+  <!-- Background music -->
+  <audio id="bgMusic" loop preload="auto">
+    <source src="https://cdn.pixabay.com/download/audio/2023/07/04/audio_8f20c7f1f8.mp3?filename=cute-background-music-14972.mp3" type="audio/mpeg">
+  </audio>
+
+<script>
+/* -------------------------
+   Elements (1–118)
+   ------------------------- */
+const ELEMENTS = [
+  {symbol:"H", name:"Hydrogen", num:1}, {symbol:"He", name:"Helium", num:2},
+  {symbol:"Li", name:"Lithium", num:3}, {symbol:"Be", name:"Beryllium", num:4},
+  {symbol:"B", name:"Boron", num:5}, {symbol:"C", name:"Carbon", num:6},
+  {symbol:"N", name:"Nitrogen", num:7}, {symbol:"O", name:"Oxygen", num:8},
+  {symbol:"F", name:"Fluorine", num:9}, {symbol:"Ne", name:"Neon", num:10},
+  {symbol:"Na", name:"Sodium", num:11}, {symbol:"Mg", name:"Magnesium", num:12},
+  {symbol:"Al", name:"Aluminium", num:13}, {symbol:"Si", name:"Silicon", num:14},
+  {symbol:"P", name:"Phosphorus", num:15}, {symbol:"S", name:"Sulfur", num:16},
+  {symbol:"Cl", name:"Chlorine", num:17}, {symbol:"Ar", name:"Argon", num:18},
+  {symbol:"K", name:"Potassium", num:19}, {symbol:"Ca", name:"Calcium", num:20},
+
+  {symbol:"Sc", name:"Scandium", num:21}, {symbol:"Ti", name:"Titanium", num:22},
+  {symbol:"V", name:"Vanadium", num:23}, {symbol:"Cr", name:"Chromium", num:24},
+  {symbol:"Mn", name:"Manganese", num:25}, {symbol:"Fe", name:"Iron", num:26},
+  {symbol:"Co", name:"Cobalt", num:27}, {symbol:"Ni", name:"Nickel", num:28},
+  {symbol:"Cu", name:"Copper", num:29}, {symbol:"Zn", name:"Zinc", num:30},
+  {symbol:"Ga", name:"Gallium", num:31}, {symbol:"Ge", name:"Germanium", num:32},
+  {symbol:"As", name:"Arsenic", num:33}, {symbol:"Se", name:"Selenium", num:34},
+  {symbol:"Br", name:"Bromine", num:35}, {symbol:"Kr", name:"Krypton", num:36},
+  {symbol:"Rb", name:"Rubidium", num:37}, {symbol:"Sr", name:"Strontium", num:38},
+  {symbol:"Y", name:"Yttrium", num:39}, {symbol:"Zr", name:"Zirconium", num:40},
+  {symbol:"Nb", name:"Niobium", num:41}, {symbol:"Mo", name:"Molybdenum", num:42},
+  {symbol:"Tc", name:"Technetium", num:43}, {symbol:"Ru", name:"Ruthenium", num:44},
+  {symbol:"Rh", name:"Rhodium", num:45}, {symbol:"Pd", name:"Palladium", num:46},
+  {symbol:"Ag", name:"Silver", num:47}, {symbol:"Cd", name:"Cadmium", num:48},
+  {symbol:"In", name:"Indium", num:49}, {symbol:"Sn", name:"Tin", num:50},
+  {symbol:"Sb", name:"Antimony", num:51}, {symbol:"Te", name:"Tellurium", num:52},
+  {symbol:"I", name:"Iodine", num:53}, {symbol:"Xe", name:"Xenon", num:54},
+  {symbol:"Cs", name:"Caesium", num:55}, {symbol:"Ba", name:"Barium", num:56},
+
+  // Lanthanides
+  {symbol:"La", name:"Lanthanum", num:57}, {symbol:"Ce", name:"Cerium", num:58},
+  {symbol:"Pr", name:"Praseodymium", num:59}, {symbol:"Nd", name:"Neodymium", num:60},
+  {symbol:"Pm", name:"Promethium", num:61}, {symbol:"Sm", name:"Samarium", num:62},
+  {symbol:"Eu", name:"Europium", num:63}, {symbol:"Gd", name:"Gadolinium", num:64},
+  {symbol:"Tb", name:"Terbium", num:65}, {symbol:"Dy", name:"Dysprosium", num:66},
+  {symbol:"Ho", name:"Holmium", num:67}, {symbol:"Er", name:"Erbium", num:68},
+  {symbol:"Tm", name:"Thulium", num:69}, {symbol:"Yb", name:"Ytterbium", num:70},
+  {symbol:"Lu", name:"Lutetium", num:71},
+
+  {symbol:"Hf", name:"Hafnium", num:72}, {symbol:"Ta", name:"Tantalum", num:73},
+  {symbol:"W", name:"Tungsten", num:74}, {symbol:"Re", name:"Rhenium", num:75},
+  {symbol:"Os", name:"Osmium", num:76}, {symbol:"Ir", name:"Iridium", num:77},
+  {symbol:"Pt", name:"Platinum", num:78}, {symbol:"Au", name:"Gold", num:79},
+  {symbol:"Hg", name:"Mercury", num:80}, {symbol:"Tl", name:"Thallium", num:81},
+  {symbol:"Pb", name:"Lead", num:82}, {symbol:"Bi", name:"Bismuth", num:83},
+  {symbol:"Po", name:"Polonium", num:84}, {symbol:"At", name:"Astatine", num:85},
+  {symbol:"Rn", name:"Radon", num:86}, {symbol:"Fr", name:"Francium", num:87},
+  {symbol:"Ra", name:"Radium", num:88},
+
+  // Actinides
+  {symbol:"Ac", name:"Actinium", num:89}, {symbol:"Th", name:"Thorium", num:90},
+  {symbol:"Pa", name:"Protactinium", num:91}, {symbol:"U", name:"Uranium", num:92},
+  {symbol:"Np", name:"Neptunium", num:93}, {symbol:"Pu", name:"Plutonium", num:94},
+  {symbol:"Am", name:"Americium", num:95}, {symbol:"Cm", name:"Curium", num:96},
+  {symbol:"Bk", name:"Berkelium", num:97}, {symbol:"Cf", name:"Californium", num:98},
+  {symbol:"Es", name:"Einsteinium", num:99}, {symbol:"Fm", name:"Fermium", num:100},
+  {symbol:"Md", name:"Mendelevium", num:101}, {symbol:"No", name:"Nobelium", num:102},
+  {symbol:"Lr", name:"Lawrencium", num:103},
+
+  {symbol:"Rf", name:"Rutherfordium", num:104}, {symbol:"Db", name:"Dubnium", num:105},
+  {symbol:"Sg", name:"Seaborgium", num:106}, {symbol:"Bh", name:"Bohrium", num:107},
+  {symbol:"Hs", name:"Hassium", num:108}, {symbol:"Mt", name:"Meitnerium", num:109},
+  {symbol:"Ds", name:"Darmstadtium", num:110}, {symbol:"Rg", name:"Roentgenium", num:111},
+  {symbol:"Cn", name:"Copernicium", num:112}, {symbol:"Nh", name:"Nihonium", num:113},
+  {symbol:"Fl", name:"Flerovium", num:114}, {symbol:"Mc", name:"Moscovium", num:115},
+  {symbol:"Lv", name:"Livermorium", num:116}, {symbol:"Ts", name:"Tennessine", num:117},
+  {symbol:"Og", name:"Oganesson", num:118},
+];
+
+/* -------------------------
+   Game state variables
+   ------------------------- */
+let mode = null;
+let pool = [];
+let askedSet = new Set();
+let correctSet = new Set();
+let historyArr = [];
+let current = null;
+let hintsUsed = 0;
+let timer = null;
+let burstTime = 30;
+let inBurst = false;
+let burstEndTimestamp = 0;
+let sessionMax = 0;
+
+/* DOM refs */
+const levelsGrid = document.getElementById('levelsGrid');
+const levelLabel = document.getElementById('levelLabel');
+const questionTitle = document.getElementById('questionTitle');
+const atomicNo = document.getElementById('atomicNo');
+const symbolBox = document.getElementById('symbolBox');
+const levelTag = document.getElementById('levelTag');
+const guessInput = document.getElementById('guessInput');
+const submitBtn = document.getElementById('submitBtn');
+const hintBtn = document.getElementById('hintBtn');
+const feedback = document.getElementById('feedback');
+const correctCountEl = document.getElementById('correctCount');
+const attemptedCountEl = document.getElementById('attemptedCount');
+const scoreDisplay = document.getElementById('scoreDisplay');
+const historyBox = document.getElementById('historyBox');
+const clearHistory = document.getElementById('clearHistory');
+const returnSelect = document.getElementById('returnSelect');
+const restartBtn = document.getElementById('restartBtn');
+const hintsUsedEl = document.getElementById('hintsUsed');
+const maxCorrectEl = document.getElementById('maxCorrect');
+const timerDisplay = document.getElementById('timerDisplay');
+const sndClick = document.getElementById('sndClick');
+const sndCorrect = document.getElementById('sndCorrect');
+const sndWrong = document.getElementById('sndWrong');
+const sndConfetti = document.getElementById('sndConfetti');
+const bgMusic = document.getElementById('bgMusic');
+
+const progressWrap = document.getElementById('progressWrap');
+const easyStep = document.getElementById('easyStep');
+const mediumStep = document.getElementById('mediumStep');
+const hardStep = document.getElementById('hardStep');
+const progressFill = document.getElementById('progressFill');
+
+const byNumber = new Map(); ELEMENTS.forEach(e => byNumber.set(e.num, e));
+const easyRange = n => n>=1 && n<=20;
+const mediumRange = n => n>=21 && n<=60;
+const hardRange = n => n>=61 && n<=118;
+const fblockRange = n => (n>=57 && n<=71) || (n>=89 && n<=103);
+
+/* small helpers */
+function play(s){ try{ s.currentTime=0; s.play(); }catch(e){} }
+function randChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+function setFeedback(text, cls=''){ feedback.textContent = text; feedback.style.color = cls==='err' ? '#c33' : '#166'; }
+
+/* Persist session max in memory (session only) */
+function updateSessionMax(){ sessionMax = Math.max(sessionMax, correctSet.size); maxCorrectEl.textContent = sessionMax; }
+
+/* Build initial pool depending on mode.
+   For BASIC mode: choose exactly 20 unique random easy elements to start. */
+function buildPool(selectedMode){
+  pool = [];
+  // do not clear sessionMax here
+  askedSet.clear();
+  correctSet.clear();
+  historyArr = [];
+  hintsUsed = 0;
+  inBurst = false;
+  clearInterval(timer);
+  timerDisplay.textContent = '';
+  progressFill.style.width = '0%';
+  progressWrap.style.display = 'none';
+
+  if(selectedMode === 'easy'){
+    pool = ELEMENTS.filter(e => easyRange(e.num));
+  } else if(selectedMode === 'medium'){
+    pool = ELEMENTS.filter(e => mediumRange(e.num));
+  } else if(selectedMode === 'hard'){
+    pool = ELEMENTS.filter(e => hardRange(e.num));
+  } else if(selectedMode === 'fblock'){
+    pool = ELEMENTS.filter(e => fblockRange(e.num));
+  } else if(selectedMode === 'mix'){
+    pool = [...ELEMENTS];
+  } else if(selectedMode === 'basic'){
+    // choose 20 unique random easy elements
+    const easyPool = ELEMENTS.filter(e => easyRange(e.num)).slice();
+    shuffle(easyPool);
+    pool = easyPool.slice(0, 20);
+    // show progress UI
+    progressWrap.style.display = 'block';
+    updateProgressStage(); // initial
+  } else if(selectedMode === 'burst'){
+    pool = [...ELEMENTS];
+    inBurst = true;
+  }
+
+  shuffle(pool);
+  hintsUsedEl.textContent = hintsUsed;
+}
+
+/* Activate a mode and start */
+function activateMode(m){
+  mode = m;
+  buildPool(m);
+  updateStats();
+  document.querySelectorAll('.level-btn').forEach(b => b.style.opacity = b.dataset.mode === m ? '1' : '0.9');
+  setFeedback('', '');
+  nextQuestion();
+  if(m === 'burst'){
+    startBurstTimer(burstTime);
+  }
+}
+
+/* Determine which stage (easy/medium/hard) for BASIC progress */
+function getBasicStage(){
+  if(askedSet.size < 20) return 'easy';
+  if(askedSet.size < 60) return 'medium';
+  return 'hard';
+}
+
+/* Update visible progress stage and fill percentage */
+function updateProgressStage(){
+  if(mode !== 'basic'){ progressWrap.style.display = 'none'; return; }
+  progressWrap.style.display = 'block';
+  const stage = getBasicStage();
+  easyStep.classList.toggle('active', stage === 'easy');
+  mediumStep.classList.toggle('active', stage === 'medium');
+  hardStep.classList.toggle('active', stage === 'hard');
+
+  // compute fill: 0..100 where
+  // 0-100 mapped across 0..118 but we want visually 0..100 for 0..118? We'll map relative to 60 as major milestone:
+  // For a clearer feeling: 0..20 => 0..33%, 20..60 => 33..66%, 60..118 => 66..100%
+  let pct;
+  if(askedSet.size <= 20) pct = (askedSet.size / 20) * 33;
+  else if(askedSet.size <= 60) pct = 33 + ((askedSet.size - 20) / 40) * 33;
+  else pct = 66 + ((askedSet.size - 60) / (118 - 60)) * 34;
+  pct = Math.min(100, Math.max(0, pct));
+  progressFill.style.width = pct + '%';
+}
+
+/* Get next question — respects BASIC progression and no repeats */
+function nextQuestion(){
+  // If BASIC and pool emptied, move to next stage
+  if(mode === 'basic' && pool.length === 0){
+    // if still haven't reached 20 asked (shouldn't happen often), refill from remaining easy
+    if(askedSet.size < 20){
+      pool = ELEMENTS.filter(e => easyRange(e.num) && !askedSet.has(e.num));
+    } else if(askedSet.size < 60){
+      // move to medium stage (fill with medium elements not asked)
+      pool = ELEMENTS.filter(e => mediumRange(e.num) && !askedSet.has(e.num));
+    } else {
+      // move to hard stage
+      pool = ELEMENTS.filter(e => hardRange(e.num) && !askedSet.has(e.num));
+    }
+    shuffle(pool);
+  }
+
+  if(inBurst && Date.now() >= burstEndTimestamp){
+    endGame(true);
+    return;
+  }
+
+  // if everything exhausted
+  if(pool.length === 0 || askedSet.size >= ELEMENTS.length){
+    endGame(true);
+    return;
+  }
+
+  // pick first unused from pool
+  let candidate = null;
+  while(pool.length){
+    const el = pool.shift();
+    if(!askedSet.has(el.num)){
+      candidate = el;
+      break;
+    }
+  }
+  if(!candidate){
+    // fallback search
+    candidate = ELEMENTS.find(e => !askedSet.has(e.num));
+    if(!candidate){ endGame(true); return; }
+  }
+
+  current = candidate;
+  askedSet.add(current.num);
+  updateQuestionUI();
+  updateStats();
+  updateProgressStage();
+}
+
+/* Update question UI */
+function updateQuestionUI(){
+  levelLabel.textContent = `Mode: ${mode ? mode.toUpperCase() : '—'}`;
+  questionTitle.textContent = `What is the name of element with atomic number ${current.num}?`;
+  atomicNo.textContent = current.num;
+  symbolBox.textContent = current.symbol;
+  guessInput.value = '';
+  setFeedback('', '');
+  if(mode === 'mix'){
+    const t = levelOf(current.num);
+    levelTag.style.visibility = 'visible';
+    levelTag.textContent = t.toUpperCase();
+    levelTag.className = 'tag ' + (t==='easy'?'easy': t==='medium'?'medium': t==='hard'?'hard':'fblock');
+  } else {
+    levelTag.style.visibility = 'hidden';
+  }
+  setTimeout(()=>guessInput.focus(), 110);
+}
+
+/* helper to return level name */
+function levelOf(num){
+  if(easyRange(num)) return 'easy';
+  if(mediumRange(num)) return 'medium';
+  if(fblockRange(num)) return 'fblock';
+  return 'hard';
+}
+
+/* Submit answer */
+function submitAnswer(){
+  const text = guessInput.value.trim();
+  if(!text) return;
+  const correctName = current.name;
+  if(!window.firstAttemptCorrect) window.firstAttemptCorrect = new Map();
+  if(!window.firstAttemptCorrect.has(current.num)){
+    const isCorrect = text.toLowerCase() === correctName.toLowerCase();
+    window.firstAttemptCorrect.set(current.num, isCorrect);
+  }
+
+  const firstWasCorrect = window.firstAttemptCorrect.get(current.num);
+  const currentlyCorrectNow = text.toLowerCase() === correctName.toLowerCase();
+
+  if(currentlyCorrectNow && !correctSet.has(current.num)){
+    correctSet.add(current.num);
+    play(sndCorrect);
+    setFeedback('✅ Correct!', '');
+  } else if(!currentlyCorrectNow){
+    play(sndWrong);
+    setFeedback(`❌ Incorrect — the element is ${correctName}`, 'err');
+  } else {
+    // already counted correct before
+    play(sndCorrect);
+    setFeedback('✅ Correct!', '');
+  }
+
+  historyArr.push({ num: current.num, name: correctName, given: text, correct: currentlyCorrectNow });
+  updateHistoryUI();
+  updateStats();
+
+  // small delay then next
+  if(inBurst){
+    nextQuestion();
+  } else {
+    setTimeout(()=>nextQuestion(), 700);
+  }
+}
+
+/* Hint generator */
+function giveHint(){
+  if(!current) return;
+  const name = current.name;
+  const hintLen = Math.max(1, Math.floor(name.length/3));
+  const hint = name.slice(0,hintLen) + '•'.repeat(Math.max(0,name.length-hintLen));
+  setFeedback('Hint: ' + hint, '');
+  hintsUsed++;
+  hintsUsedEl.textContent = hintsUsed;
+  play(sndClick);
+}
+
+/* History UI */
+function updateHistoryUI(){
+  if(historyArr.length===0){ historyBox.textContent = 'No attempts yet.'; return; }
+  historyBox.innerHTML = historyArr.slice().reverse().map(h => {
+    const ok = h.correct ? '✓' : '✕';
+    return `<div style="padding:6px 0; border-bottom:1px dashed rgba(0,0,0,0.04)"><strong>#${h.num}</strong> ${escapeHtml(h.name)} — <em>your:</em> ${escapeHtml(h.given)} <span style="float:right">${ok}</span></div>`;
+  }).join('');
+}
+
+/* escape HTML for safety */
+function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+
+/* Stats */
+function updateStats(){
+  correctCountEl.textContent = correctSet.size;
+  attemptedCountEl.textContent = askedSet.size;
+  scoreDisplay.textContent = `${correctSet.size}/${askedSet.size}`;
+  updateSessionMax();
+}
+
+/* Clear history */
+clearHistory.addEventListener('click', ()=>{
+  historyArr = [];
+  updateHistoryUI();
+});
+
+/* Restart current mode */
+restartBtn.addEventListener('click', ()=>{
+  buildPool(mode);
+  askedSet.clear();
+  correctSet.clear();
+  window.firstAttemptCorrect = new Map();
+  historyArr = [];
+  updateHistoryUI();
+  updateStats();
+  nextQuestion();
+});
+
+/* Return to mode select */
+returnSelect.addEventListener('click', ()=>{
+  mode = null;
+  pool = [];
+  askedSet.clear(); correctSet.clear(); historyArr = []; window.firstAttemptCorrect = new Map();
+  updateHistoryUI();
+  updateStats();
+  document.querySelectorAll('.level-btn').forEach(b => b.style.opacity = '1');
+  levelLabel.textContent = 'Mode: —';
+  questionTitle.textContent = 'Select a mode to start';
+  atomicNo.textContent = '—';
+  symbolBox.textContent = '—';
+  levelTag.style.visibility = 'hidden';
+  setFeedback('Choose a level above to begin', '');
+  clearInterval(timer);
+  timerDisplay.textContent = '';
+  progressWrap.style.display = 'none';
+});
+
+/* End game */
+function endGame(showConfettiNow){
+  sessionMax = Math.max(sessionMax, correctSet.size);
+  setFeedback(`🎉 Completed! Correct: ${correctSet.size} / Attempted: ${askedSet.size}`, '');
+  if(showConfettiNow){
+    celebrateBurst();
+    play(sndConfetti);
+  }
+  clearInterval(timer);
+  inBurst = false;
+  timerDisplay.textContent = '';
+  progressWrap.style.display = (mode==='basic') ? 'block' : 'none';
+}
+
+/* Burst timer */
+function startBurstTimer(seconds){
+  burstEndTimestamp = Date.now() + seconds*1000;
+  timerDisplay.textContent = `Time: ${seconds}s`;
+  timer = setInterval(()=>{
+    const left = Math.max(0, Math.ceil((burstEndTimestamp - Date.now())/1000));
+    timerDisplay.textContent = `Time: ${left}s`;
+    if(left <= 0){ clearInterval(timer); endGame(true); }
+  }, 250);
+}
+
+/* celebration */
+function celebrateBurst(){
+  const colors = ['#ff0a54','#ff477e','#ffd86b','#7ef7b9','#00bbf9','#9370db','#ff8c42'];
+  confetti({ particleCount: 140, spread: 120, origin: { y: 0.35 }, colors });
+  setTimeout(()=> confetti({ particleCount: 100, spread: 160, origin: { y: 0.45 }, colors }), 250);
+  setTimeout(()=> confetti({ particleCount: 60, spread: 60, origin: { y: 0.4 }, gravity:0.6, colors }), 500);
+}
+
+/* wiring events */
+submitBtn.addEventListener('click', ()=>{ submitAnswer(); });
+guessInput.addEventListener('keypress', e => { if(e.key==='Enter') submitAnswer(); });
+hintBtn.addEventListener('click', ()=>{ giveHint(); });
+
+document.querySelectorAll('.level-btn').forEach(btn=>{
+  btn.addEventListener('click', (ev)=>{
+    const m = btn.dataset.mode;
+    play(sndClick);
+    activateMode(m);
+  });
+});
+
+/* small periodic update for UI correctness */
+function updateHistoryAndStats(){ updateHistoryUI(); updateStats(); updateProgressStage(); }
+setInterval(updateHistoryAndStats, 700);
+
+/* background music attempt */
+try{ bgMusic.volume = 0.18; bgMusic.play().catch(()=>{}); }catch(e){}
+
+/* element box click */
+document.getElementById('elementBox').addEventListener('click', ()=>{ play(sndClick); });
+
+/* initial prompt */
+setFeedback('Select a level above to begin', '');
+levelLabel.textContent = 'Mode: —';
+questionTitle.textContent = 'Select a mode to start';
+atomicNo.textContent = '—';
+symbolBox.textContent = '—';
+levelTag.style.visibility = 'hidden';
+
+</script>
+</body>
 </html>
